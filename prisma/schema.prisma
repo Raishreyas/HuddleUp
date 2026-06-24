@@ -1,0 +1,139 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  
+  // Relations
+  rooms         Room[]         @relation("HostRooms")
+  participants  Participant[]
+  schedules     Schedule[]     @relation("HostSchedules")
+}
+
+enum RoomStatus {
+  waiting
+  active
+  ended
+}
+
+model Room {
+  id          String   @id @default(uuid())
+  name        String
+  hostId      String
+  scheduledAt DateTime?
+  status      RoomStatus @default(waiting)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  host        User            @relation("HostRooms", fields: [hostId], references: [clerkId])
+  participants Participant[]
+  breakouts   BreakoutSession[]
+  messages    Message[]
+  recordings  Recording[]
+  schedules   Schedule[]
+}
+
+enum ParticipantRole {
+  host
+  participant
+}
+
+model Participant {
+  id        String          @id @default(uuid())
+  roomId    String
+  userId    String
+  role      ParticipantRole @default(participant)
+  status    String          @default("waiting") // waiting | admitted | denied
+  joinedAt  DateTime        @default(now())
+  leftAt    DateTime?
+
+  // Relations
+  room      Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  assignments BreakoutAssignment[]
+}
+
+enum BreakoutStatus {
+  active
+  ended
+}
+
+model BreakoutSession {
+  id        String         @id @default(uuid())
+  roomId    String
+  name      String
+  status    BreakoutStatus @default(active)
+  createdAt DateTime       @default(now())
+
+  // Relations
+  room      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  rooms     BreakoutRoom[]
+}
+
+model BreakoutRoom {
+  id               String          @id @default(uuid())
+  sessionId        String
+  name             String
+  livekitRoomName  String
+
+  // Relations
+  session          BreakoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  assignments      BreakoutAssignment[]
+}
+
+model BreakoutAssignment {
+  id             String       @id @default(uuid())
+  breakoutRoomId String
+  participantId  String
+
+  // Relations
+  breakoutRoom   BreakoutRoom @relation(fields: [breakoutRoomId], references: [id], onDelete: Cascade)
+  participant    Participant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id       String   @id @default(uuid())
+  roomId   String
+  senderId String
+  content  String
+  sentAt   DateTime @default(now())
+
+  // Relations
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Recording {
+  id        String    @id @default(uuid())
+  roomId    String
+  r2Url     String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  // Relations
+  room      Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Schedule {
+  id            String   @id @default(uuid())
+  roomId        String?
+  hostId        String
+  title         String
+  startAt       DateTime
+  endAt         DateTime
+  inviteeEmails String[]
+
+  // Relations
+  room          Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  host          User     @relation("HostSchedules", fields: [hostId], references: [clerkId])
+}
