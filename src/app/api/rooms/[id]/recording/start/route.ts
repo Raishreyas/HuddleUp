@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { EgressClient, EncodedFileType } from "livekit-server-sdk";
 import { syncUser } from "@/lib/user";
